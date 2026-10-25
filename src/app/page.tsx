@@ -1,69 +1,116 @@
-import Image from "next/image";
+import Link from "next/link";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 
-export default function Home() {
+const features = [
+  ["Fast checkout", "Scan a barcode or tap a product. Bills take seconds, even at rush hour."],
+  ["Stock that stays accurate", "Every sale and delivery updates inventory. Low-stock items are flagged before they run out."],
+  ["Credit (udhar) tracking", "Record what regular customers owe and what you owe suppliers, in one place."],
+  ["Clear daily numbers", "See sales, expenses and profit without opening a spreadsheet."],
+  ["Suppliers and purchases", "Log orders, mark them received, and keep a history of what you paid."],
+  ["Staff roles", "Give cashiers the counter and keep reports and settings for the owner."],
+];
+
+const receipt = [
+  ["Basmati rice 5kg", "950"],
+  ["Dairy milk 1L x 2", "240"],
+  ["Instant noodles x 6", "180"],
+];
+
+const focusLight = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7d0e41]";
+const focusDark = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f4d9cd]";
+
+export default function page() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div className="min-h-screen bg-[#fcf6f2]">
+      <div>
+        <Navbar/>
+      </div>
+
+      <main>
+        <section className="mx-auto grid max-w-7xl items-center gap-12 px-6 py-16 md:grid-cols-2 md:py-24">
+          <div>
+            <h1 className="text-4xl font-bold leading-tight tracking-tight text-[#7d0e41] md:text-5xl">
+              Run your shop from one screen.
+            </h1>
+            <p className="mt-5 max-w-md text-lg text-[#6b4455]">
+              Smart Mart handles billing, stock, suppliers and expenses for your
+              store, so you spend less time counting and more time selling.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link
+                href="/login"
+                className={`rounded-md bg-[#7d0e41] px-6 py-3 font-semibold text-white hover:bg-[#5e0a31] ${focusLight}`}
+              >
+                Open the dashboard
+              </Link>
+              <Link
+                href="/pos"
+                className={`rounded-md border border-[#aa5e78] bg-white px-6 py-3 font-medium text-[#7d0e41] hover:border-[#7d0e41] ${focusLight}`}
+              >
+                Try the counter
+              </Link>
+            </div>
+          </div>
+
+          <div className="rounded-2xl bg-[#d49b9a] px-6 py-12 sm:px-12">
+            <div className="mx-auto w-full max-w-xs rotate-1 bg-white px-6 py-7 shadow-xl">
+              <div className="text-center">
+                <div className="font-bold text-[#7d0e41]">Smart Mart</div>
+                <div className="text-xs text-[#6b4455]">Receipt S-1043</div>
+              </div>
+              <ul className="mt-5 space-y-2 border-y border-dashed border-[#d49b9a] py-4 text-sm text-[#7d0e41]">
+                {receipt.map(([name, price]) => (
+                  <li key={name} className="flex justify-between">
+                    <span>{name}</span>
+                    <span>Rs {price}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-4 flex justify-between text-lg font-bold text-[#7d0e41]">
+                <span>Total</span>
+                <span>Rs 1,370</span>
+              </div>
+              <div className="mt-1 text-center text-xs text-[#6b4455]">Paid by QR</div>
+            </div>
+          </div>
+        </section>
+
+        <section id="features" className="border-y border-[#d49b9a] bg-[#f4d9cd]">
+          <div className="mx-auto max-w-7xl px-6 py-16">
+            <h2 className="max-w-lg text-2xl font-bold text-[#7d0e41]">
+              Everything a neighbourhood store needs, nothing it doesn&rsquo;t
+            </h2>
+            <div className="mt-10 grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+              {features.map(([title, text]) => (
+                <div key={title} className="border-l-4 border-[#aa5e78] pl-4">
+                  <h3 className="font-semibold text-[#7d0e41]">{title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-[#6b4455]">{text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-7xl px-6 py-16">
+          <div className="rounded-2xl bg-[#7d0e41] px-8 py-12 text-white">
+            <h2 className="text-2xl font-bold">Ready to ring up your first sale?</h2>
+            <p className="mt-2 max-w-md text-[#f4d9cd]">
+              Sign in and add your products. You can be billing customers in minutes.
+            </p>
+            <Link
+              href="/login"
+              className={`mt-6 inline-block rounded-md bg-[#f4d9cd] px-6 py-3 font-semibold text-[#7d0e41] hover:bg-[#d49b9a] ${focusDark}`}
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+              Sign in
+            </Link>
+          </div>
+        </section>
       </main>
+
+      <footer>
+        <Footer/>
+      </footer>
     </div>
   );
 }
