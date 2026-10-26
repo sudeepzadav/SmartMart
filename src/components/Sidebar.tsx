@@ -20,8 +20,8 @@ const links = [
 export default function Sidebar() {
   const pathname = usePathname();
   return (
-    <aside className="flex w-56 shrink-0 flex-col border-r border-stone-200 bg-white p-4">
-      <div className="mb-6 px-2 text-lg font-semibold text-emerald-900">Smart Mart</div>
+    <aside className="flex w-56 shrink-0 flex-col border-r border-stone-200 bg-[#7d0e41] p-4">
+      <div className="mb-6 px-2 text-2xl font-semibold text-amber-500">Smart Mart</div>
       <nav className="flex flex-col gap-1">
         {links.map(([label, href]) => {
           const active = pathname === href || pathname.startsWith(href + "/");
@@ -30,7 +30,7 @@ export default function Sidebar() {
               key={href}
               href={href}
               className={`rounded-md px-3 py-2 text-sm ${
-                active ? "bg-emerald-50 font-medium text-emerald-900" : "text-stone-700 hover:bg-stone-100"
+                active ? "bg-emerald-50 font-medium text-emerald-900" : "text-white hover:bg-stone-100 hover:text-red-700"
               }`}
             >
               {label}

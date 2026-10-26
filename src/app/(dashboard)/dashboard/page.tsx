@@ -13,14 +13,21 @@ export default function Page() {
     <>
       <PageHeader title="Dashboard" subtitle="How the store is doing today." />
       <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {stats.map(([label, value]) => (
-          <div key={label} className="rounded-lg border border-stone-200 bg-white p-4">
-            <div className="text-sm text-stone-600">{label}</div>
-            <div className="mt-1 text-2xl font-semibold">{value}</div>
+        {stats.map(([label, value], i) => (
+          <div
+            key={label}
+            className={
+              i === 0
+                ? "rounded-xl bg-[#7d0e41] p-5 shadow-sm"
+                : "rounded-xl border border-[#d49b9a] border-t-4 border-t-[#aa5e78] bg-white p-5 shadow-sm"
+            }
+          >
+            <div className={i === 0 ? "text-sm text-[#f4d9cd]" : "text-sm text-[#6b4455]"}>{label}</div>
+            <div className={`mt-1 text-2xl font-bold ${i === 0 ? "text-white" : "text-[#7d0e41]"}`}>{value}</div>
           </div>
         ))}
       </div>
-      <h2 className="mb-3 text-lg font-medium">Recent sales</h2>
+      <h2 className="mb-3 text-lg font-semibold text-[#7d0e41]">Recent sales</h2>
       <DataTable
         columns={["Receipt", "Time", "Total (Rs)"]}
         rows={[["S-1002", "10:31", 560], ["S-1001", "10:12", 1240]]}

@@ -2,7 +2,6 @@ import PageHeader from "@/components/PageHeader";
 import DataTable from "@/components/DataTable";
 
 const columns = ["Date","Type","Note","Amount (Rs)"];
-// Sample data. Replace with a database query.
 const rows: (string | number)[][] = [["2026-10-01","Rent","Shop rent",25000],["2026-10-05","Electricity","Monthly bill",3200]];
 
 export default function Page() {
