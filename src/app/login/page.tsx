@@ -1,22 +1,70 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+type Cashier = { id: number; name: string };
+
+const field =
+  "mt-1 w-full rounded-md border border-[#d49b9a] bg-white px-3 py-2 text-sm text-[#7d0e41] placeholder:text-[#aa5e78]/60 focus:border-[#7d0e41] focus:outline-2 focus:outline-offset-1 focus:outline-[#aa5e78]";
+
 export default function LoginPage() {
   const router = useRouter();
+  const [tab, setTab] = useState<"owner" | "cashier">("cashier");
+  const [cashiers, setCashiers] = useState<Cashier[]>([]);
+  const [userId, setUserId] = useState<number | null>(null);
+  const [pin, setPin] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!email || !password) return setError("Enter your email and password.");
-    router.push("/dashboard");
+  useEffect(() => {
+    fetch("/api/auth/cashiers")
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setCashiers)
+      .catch(() => setCashiers([]));
+  }, []);
+
+  function switchTab(t: "owner" | "cashier") {
+    setTab(t);
+    setError("");
   }
 
-  const field =
-    "mt-1 w-full rounded-md border border-[#d49b9a] bg-white px-3 py-2 text-sm text-[#7d0e41] placeholder:text-[#aa5e78]/60 focus:border-[#7d0e41] focus:outline-2 focus:outline-offset-1 focus:outline-[#aa5e78]";
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    const payload =
+      tab === "owner"
+        ? { mode: "owner", email, password }
+        : { mode: "cashier", userId, pin };
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Could not sign in.");
+        setPin("");
+        return;
+      }
+      router.push(data.role === "ADMIN" ? "/dashboard" : "/pos");
+      router.refresh();
+    } catch {
+      setError("Could not reach the server. Try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const tabClass = (active: boolean) =>
+    `flex-1 rounded-md py-2 text-sm font-semibold ${
+      active ? "bg-[#7d0e41] text-white" : "text-[#7d0e41] hover:bg-[#f4d9cd]"
+    }`;
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-[#fcf6f2] p-4">
@@ -29,37 +77,76 @@ export default function LoginPage() {
         className="w-full max-w-sm space-y-4 rounded-2xl border border-[#d49b9a] border-t-4 border-t-[#7d0e41] bg-white p-6 shadow-lg"
       >
         <div>
-          <h1 className="text-xl font-bold text-[#7d0e41]">Sign in to Smart Mart</h1>
-          <p className="mt-1 text-sm text-[#6b4455]">Welcome back. Enter your details to continue.</p>
+          <h1 className="text-xl font-bold text-[#7d0e41]">Sign in</h1>
+          <p className="mt-1 text-sm text-[#6b4455]">Choose how you want to sign in.</p>
         </div>
 
-        <label className="block text-sm font-medium text-[#7d0e41]">
-          Email
-          <input
-            className={field}
-            type="email"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </label>
+        <div className="flex gap-2 rounded-lg bg-[#fcf6f2] p-1">
+          <button type="button" onClick={() => switchTab("cashier")} className={tabClass(tab === "cashier")}>
+            Cashier
+          </button>
+          <button type="button" onClick={() => switchTab("owner")} className={tabClass(tab === "owner")}>
+            Owner
+          </button>
+        </div>
 
-        <label className="block text-sm font-medium text-[#7d0e41]">
-          Password
-          <input
-            className={field}
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </label>
-
-        {error && (
-          <p className="rounded-md bg-[#f4d9cd] px-3 py-2 text-sm font-medium text-[#7d0e41]">{error}</p>
+        {tab === "owner" ? (
+          <>
+            <label className="block text-sm font-medium text-[#7d0e41]">
+              Email
+              <input className={field} type="email" autoComplete="username" placeholder="you@example.com"
+                value={email} onChange={(e) => setEmail(e.target.value)} />
+            </label>
+            <label className="block text-sm font-medium text-[#7d0e41]">
+              Password
+              <input className={field} type="password" autoComplete="current-password"
+                value={password} onChange={(e) => setPassword(e.target.value)} />
+            </label>
+          </>
+        ) : (
+          <>
+            <div>
+              <div className="text-sm font-medium text-[#7d0e41]">Who is at the counter?</div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {cashiers.length === 0 && (
+                  <p className="text-sm text-[#6b4455]">No cashiers yet. Ask the owner to add one.</p>
+                )}
+                {cashiers.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setUserId(c.id)}
+                    className={`rounded-full border px-4 py-2 text-sm font-medium ${
+                      userId === c.id
+                        ? "border-[#7d0e41] bg-[#7d0e41] text-white"
+                        : "border-[#d49b9a] bg-white text-[#7d0e41] hover:bg-[#f4d9cd]"
+                    }`}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <label className="block text-sm font-medium text-[#7d0e41]">
+              PIN
+              <input className={`${field} tracking-[0.5em]`} type="password" inputMode="numeric"
+                maxLength={6} autoComplete="off" placeholder="••••"
+                value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} />
+            </label>
+          </>
         )}
 
-        <button className="w-full rounded-md bg-[#7d0e41] py-2.5 text-sm font-semibold text-white hover:bg-[#5e0a31] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7d0e41]">
-          Sign in
+        {error && (
+          <p role="alert" className="rounded-md bg-[#f4d9cd] px-3 py-2 text-sm font-medium text-[#7d0e41]">
+            {error}
+          </p>
+        )}
+
+        <button
+          disabled={loading}
+          className="w-full rounded-md bg-[#7d0e41] py-2.5 text-sm font-semibold text-white hover:bg-[#5e0a31] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7d0e41] disabled:opacity-60"
+        >
+          {loading ? "Signing in..." : "Sign in"}
         </button>
       </form>
     </main>
