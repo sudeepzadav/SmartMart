@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,7 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum UserRole {
+enum Role {
   ADMIN
   CASHIER
 }
@@ -16,33 +15,13 @@ enum UserRole {
 model User {
   id             String    @id @default(auto()) @map("_id") @db.ObjectId
   name           String
-  email          String?   @unique
-  passwordHash   String?
-  pinHash        String?
-  role           UserRole  @default(CASHIER)
+  email          String    @unique
+  passwordHash   String
+  pinHash        String
+  role           Role      @default(CASHIER)
   active         Boolean   @default(true)
-  failedAttempts Int       @default(0)
-  lockedUntil    DateTime?
+  pinFailedCount Int       @default(0)
+  pinLockedUntil DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
-}
-
-model Category {
-  id        String    @id @default(auto()) @map("_id") @db.ObjectId
-  name      String    @unique
-  products  Product[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-}
-
-model Product {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  sku        String   @unique
-  name       String
-  price      Float
-  stock      Int      @default(0)
-  categoryId String   @db.ObjectId
-  category   Category @relation(fields: [categoryId], references: [id])
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
 }
