@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifyToken } from "@/lib/token";
 
-// Pages only the owner can open
 const ADMIN_ONLY = ["/reports", "/settings", "/expenses", "/purchases", "/suppliers"];
 const PUBLIC = ["/", "/login"];
 
@@ -10,14 +9,14 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isApi = pathname.startsWith("/api");
 
-  // Login, logout and the cashier name list must work without a session
+  
   if (pathname.startsWith("/api/auth")) return NextResponse.next();
 
   const token = request.cookies.get("session")?.value;
   const session = token ? await verifyToken(token) : null;
 
   if (PUBLIC.includes(pathname)) {
-    // Signed-in people skip the login screen
+    
     if (session && pathname === "/login") {
       const home = session.role === "ADMIN" ? "/dashboard" : "/pos";
       return NextResponse.redirect(new URL(home, request.url));
