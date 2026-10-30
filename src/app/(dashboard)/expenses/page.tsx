@@ -8,7 +8,7 @@ export default function Page() {
   return (
     <>
       <PageHeader title="Expenses" subtitle="Rent, wages, electricity and other costs." action="Add expense" />
-      <DataTable columns={columns} rows={rows} />
+      <div className="bg-white text-black border-0 rounded-lg"><DataTable columns={columns} rows={rows} /></div>
     </>
   );
 }

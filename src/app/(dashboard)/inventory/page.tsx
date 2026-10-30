@@ -8,7 +8,7 @@ export default function Page() {
   return (
     <>
       <PageHeader title="Inventory" subtitle="Current stock levels and low-stock items." action="Adjust stock" />
-      <DataTable columns={columns} rows={rows} />
+      <div className="bg-white text-black border=0 rounded-lg"><DataTable columns={columns} rows={rows} /></div>
     </>
   );
 }

@@ -9,7 +9,7 @@ export default function Page() {
   return (
     <>
       <PageHeader title="Purchases" subtitle="Stock you have ordered from suppliers." action="New purchase" />
-      <DataTable columns={columns} rows={rows} />
+      <div className="bg-white text-black border-0 rounded-lg"><DataTable columns={columns} rows={rows} /></div>
     </>
   );
 }

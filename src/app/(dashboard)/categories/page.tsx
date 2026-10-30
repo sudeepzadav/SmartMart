@@ -9,7 +9,7 @@ export default function Page() {
   return (
     <>
       <PageHeader title="Categories" subtitle="Group products so they are easy to find." action="Add category" />
-      <DataTable columns={columns} rows={rows} />
+      <div className="bg-white text-black border-0 rounded-lg"><DataTable columns={columns} rows={rows} /></div>
     </>
   );
 }

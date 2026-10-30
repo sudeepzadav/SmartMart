@@ -10,7 +10,9 @@ type NavbarProps = {
   isAuthenticated: boolean;
 };
 
-export default function Navbar({ isAuthenticated }: NavbarProps) {
+export default function Navbar({
+  isAuthenticated,
+}: NavbarProps) {
   const focusDark =
     "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f4d9cd]";
 
