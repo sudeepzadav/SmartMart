@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,6 +12,25 @@ enum Role {
   CASHIER
 }
 
+enum PaymentMethod {
+  CASH
+  QR
+  CREDIT // sold on udhar, added to the customer's balance
+}
+
+enum CreditType {
+  CHARGE  // customer took goods on credit (balance goes up)
+  PAYMENT // customer paid something back (balance goes down)
+}
+
+enum PurchaseStatus {
+  ORDERED
+  RECEIVED
+  CANCELLED
+}
+
+/* ---------- Existing models ---------- */
+
 model User {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
   name         String
@@ -23,6 +41,11 @@ model User {
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  // NEW: back-references
+  sales     Sale[]
+  purchases Purchase[]
+  expenses  Expense[]
 }
 
 model Category {
@@ -34,15 +57,123 @@ model Category {
 }
 
 model Product {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
   name        String
   description String?
   price       Float
-  stock       Int      @default(0)
-  barcode     String?  @unique
-  categoryId  String?  @db.ObjectId
+  stock       Int       @default(0)
+  barcode     String?   @unique
+  categoryId  String?   @db.ObjectId
   category    Category? @relation(fields: [categoryId], references: [id])
-  active      Boolean  @default(true)
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // NEW: needed for profit and low-stock warnings
+  costPrice  Float @default(0) // what you pay the supplier
+  lowStockAt Int   @default(5) // flag the product when stock is at or below this
+}
+
+/* ---------- NEW: sales ---------- */
+
+// One line on a bill, stored inside the Sale document
+type SaleItem {
+  productId String @db.ObjectId
+  name      String
+  price     Float
+  costPrice Float? // copied at sale time so old profit numbers never change
+  quantity  Int
+}
+
+model Sale {
+  id            String        @id @default(auto()) @map("_id") @db.ObjectId
+  receiptNo     Int           @unique
+  cashierId     String        @db.ObjectId
+  cashier       User          @relation(fields: [cashierId], references: [id])
+  cashierName   String
+  customerId    String?       @db.ObjectId // only for credit sales
+  customer      Customer?     @relation(fields: [customerId], references: [id])
+  items         SaleItem[]
+  total         Float
+  paymentMethod PaymentMethod
+  amountPaid    Float
+  change        Float
+  createdAt     DateTime      @default(now())
+
+  @@index([createdAt])
+}
+
+/* ---------- NEW: credit (udhar) ---------- */
+
+model Customer {
+  id        String        @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  phone     String?
+  balance   Float         @default(0) // how much this customer owes you right now
+  active    Boolean       @default(true)
+  sales     Sale[]
+  entries   CreditEntry[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+// Ledger: every charge and repayment, so the balance can be checked
+model CreditEntry {
+  id         String     @id @default(auto()) @map("_id") @db.ObjectId
+  customerId String     @db.ObjectId
+  customer   Customer   @relation(fields: [customerId], references: [id])
+  type       CreditType
+  amount     Float
+  saleId     String?    @db.ObjectId
+  note       String?
+  createdAt  DateTime   @default(now())
+
+  @@index([customerId, createdAt])
+}
+
+/* ---------- NEW: suppliers and purchases ---------- */
+
+model Supplier {
+  id        String     @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  phone     String?
+  active    Boolean    @default(true)
+  purchases Purchase[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+type PurchaseItem {
+  productId String @db.ObjectId
+  name      String
+  costPrice Float
+  quantity  Int
+}
+
+model Purchase {
+  id          String         @id @default(auto()) @map("_id") @db.ObjectId
+  supplierId  String         @db.ObjectId
+  supplier    Supplier       @relation(fields: [supplierId], references: [id])
+  createdById String         @db.ObjectId
+  createdBy   User           @relation(fields: [createdById], references: [id])
+  items       PurchaseItem[]
+  total       Float
+  amountPaid  Float          @default(0) // total - amountPaid = what you still owe
+  status      PurchaseStatus @default(ORDERED)
+  receivedAt  DateTime?
+  createdAt   DateTime       @default(now())
+}
+
+/* ---------- NEW: expenses ---------- */
+
+model Expense {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  category    String? // rent, electricity, salary, and so on
+  amount      Float
+  note        String?
+  date        DateTime @default(now())
+  createdById String   @db.ObjectId
+  createdBy   User     @relation(fields: [createdById], references: [id])
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 }

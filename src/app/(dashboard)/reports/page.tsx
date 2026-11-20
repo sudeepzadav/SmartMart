@@ -15,7 +15,7 @@ export default function Page() {
       <div className="grid gap-4 md:grid-cols-2">
         {reports.map(([title, desc]) => (
           <Link key={title} href="/reports" className="rounded-lg border border-stone-200 bg-white p-5 hover:border-emerald-800">
-            <div className="font-medium">{title}</div>
+            <div className="font-medium text-black">{title}</div>
             <p className="mt-1 text-sm text-stone-600">{desc}</p>
           </Link>
         ))}
