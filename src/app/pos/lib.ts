@@ -33,3 +33,5 @@ export function calcTotals(
   const vat = round2(taxable * VAT_RATE);
   return { subtotal, discount, vat, total: round2(taxable + vat) };
 }
+export const formatInvoiceNo = (n: number) =>
+  `INV-${String(n).padStart(5, "0")}`;

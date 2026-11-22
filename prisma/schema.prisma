@@ -14,13 +14,14 @@ enum Role {
 
 enum PaymentMethod {
   CASH
+  CARD 
   QR
-  CREDIT // sold on udhar, added to the customer's balance
+  CREDIT
 }
 
 enum CreditType {
-  CHARGE  // customer took goods on credit (balance goes up)
-  PAYMENT // customer paid something back (balance goes down)
+  CHARGE  
+  PAYMENT 
 }
 
 enum PurchaseStatus {
@@ -42,7 +43,6 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  // NEW: back-references
   sales     Sale[]
   purchases Purchase[]
   expenses  Expense[]
@@ -69,12 +69,11 @@ model Product {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  // NEW: needed for profit and low-stock warnings
   costPrice  Float @default(0) // what you pay the supplier
   lowStockAt Int   @default(5) // flag the product when stock is at or below this
 }
 
-/* ---------- NEW: sales ---------- */
+/* ---------- Sales ---------- */
 
 // One line on a bill, stored inside the Sale document
 type SaleItem {
@@ -87,23 +86,27 @@ type SaleItem {
 
 model Sale {
   id            String        @id @default(auto()) @map("_id") @db.ObjectId
-  receiptNo     Int           @unique
+  receiptNo     Int           @unique // shown as INV-00001
   cashierId     String        @db.ObjectId
   cashier       User          @relation(fields: [cashierId], references: [id])
   cashierName   String
+  customerName  String? // CHANGED: free-text name typed at the counter
   customerId    String?       @db.ObjectId // only for credit sales
   customer      Customer?     @relation(fields: [customerId], references: [id])
   items         SaleItem[]
-  total         Float
+  subtotal      Float         @default(0) // CHANGED: before discount and VAT
+  discount      Float         @default(0) // CHANGED
+  vat           Float         @default(0) // CHANGED
+  total         Float // what the customer pays: subtotal - discount + VAT
   paymentMethod PaymentMethod
-  amountPaid    Float
+  amountPaid    Float // cash handed over, or the total for card and QR
   change        Float
   createdAt     DateTime      @default(now())
 
   @@index([createdAt])
 }
 
-/* ---------- NEW: credit (udhar) ---------- */
+/* ---------- Credit (udhar) ---------- */
 
 model Customer {
   id        String        @id @default(auto()) @map("_id") @db.ObjectId
@@ -131,7 +134,7 @@ model CreditEntry {
   @@index([customerId, createdAt])
 }
 
-/* ---------- NEW: suppliers and purchases ---------- */
+/* ---------- Suppliers and purchases ---------- */
 
 model Supplier {
   id        String     @id @default(auto()) @map("_id") @db.ObjectId
@@ -164,7 +167,7 @@ model Purchase {
   createdAt   DateTime       @default(now())
 }
 
-/* ---------- NEW: expenses ---------- */
+/* ---------- Expenses ---------- */
 
 model Expense {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId

@@ -1,10 +1,11 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
+import { useRouter } from "next/navigation";
 import ProductGrid from "@/components/ProductGrid";
 import CartPanel from "@/components/CartPanel";
 import BillReceipt from "@/components/BillReceipt";
-import { calcTotals, round2 } from "./lib";
+import { calcTotals, formatInvoiceNo, round2 } from "./lib";
 import type {
   Bill,
   CartLine,
@@ -15,16 +16,13 @@ import type {
 } from "./types";
 import Footer from "@/components/Footer";
 
-// Sample data. Replace with products fetched from your database.
-// `barcode` is the number printed under the bars on the package.
-const products: Product[] = [
-  { sku: "P001", barcode: "8901234500011", name: "Basmati rice 5kg", price: 950 },
-  { sku: "P002", barcode: "8901234500028", name: "Dairy milk 1L", price: 120 },
-  { sku: "P003", barcode: "8901234500035", name: "Instant noodles", price: 30 },
-  { sku: "P004", barcode: "8901234500042", name: "Tea 250g", price: 210 },
-];
-
 export default function PosPage() {
+  const router = useRouter();
+
+  // Products now come from the database (/api/products).
+  // `sku` holds the product's database id, which is what the server needs.
+  const [products, setProducts] = useState<Product[]>([]);
+
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [status, setStatus] = useState<ScanStatus>(null);
@@ -36,10 +34,44 @@ export default function PosPage() {
   const [tendered, setTendered] = useState("");
 
   const [bill, setBill] = useState<Bill | null>(null);
-  const [billCounter, setBillCounter] = useState(1);
+  const [saving, setSaving] = useState(false);
 
   // The ref lives here so the global scanner listener below can use it.
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const loadProducts = useCallback(async () => {
+    try {
+      const res = await fetch("/api/products", { cache: "no-store" });
+      if (res.status === 401) {
+        router.push("/login");
+        return;
+      }
+      if (!res.ok) throw new Error("Failed");
+      const data: {
+        id: string;
+        name: string;
+        barcode: string | null;
+        price: number;
+      }[] = await res.json();
+      setProducts(
+        data.map((p) => ({
+          sku: p.id,
+          barcode: p.barcode ?? "",
+          name: p.name,
+          price: p.price,
+        }))
+      );
+    } catch {
+      setStatus({
+        ok: false,
+        text: "Could not load products. Check the connection and refresh.",
+      });
+    }
+  }, [router]);
+
+  useEffect(() => {
+    loadProducts();
+  }, [loadProducts]);
 
   // Fit the POS exactly into the space left under the navbar (and above any footer),
   // so the page itself never scrolls. Only the product list and the cart scroll.
@@ -135,22 +167,70 @@ export default function PosPage() {
   }
 
   // ---- Billing ----
-  function completeSale() {
-    if (cart.length === 0 || cashShort) return;
-    const newBill: Bill = {
-      billNo: `INV-${String(billCounter).padStart(5, "0")}`,
-      date: new Date().toLocaleString("en-GB"),
-      customer: customer.trim(),
-      lines: cart,
-      totals,
-      method,
-      tendered: method === "Cash" ? tenderedNum : null,
-      change,
-    };
-    // TODO: save the sale via API, e.g.
-    // await fetch("/api/sales", { method: "POST", body: JSON.stringify(newBill) });
-    setBill(newBill);
-    setBillCounter((n) => n + 1);
+  // The sale is saved on the server first. The bill is shown only after the
+  // server confirms it, using the totals the server calculated.
+  async function completeSale() {
+    if (cart.length === 0 || cashShort || saving) return;
+    setSaving(true);
+
+    try {
+      const res = await fetch("/api/sales", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: cart.map((l) => ({ productId: l.sku, quantity: l.qty })),
+          paymentMethod: method.toUpperCase(),
+          discountType,
+          discountValue,
+          customerName: customer.trim(),
+          tendered: method === "Cash" ? tenderedNum : null,
+        }),
+      });
+      const data = await res.json();
+
+      if (res.status === 401) {
+        router.push("/login");
+        return;
+      }
+      if (!res.ok) {
+        setStatus({ ok: false, text: data.error ?? "Could not save the sale" });
+        if (res.status === 409) loadProducts(); // stock may have changed
+        return;
+      }
+
+      const sale = data.sale as {
+        receiptNo: number;
+        createdAt: string;
+        customerName: string | null;
+        subtotal: number;
+        discount: number;
+        vat: number;
+        total: number;
+        amountPaid: number;
+        change: number;
+      };
+
+      setBill({
+        billNo: formatInvoiceNo(sale.receiptNo),
+        date: new Date(sale.createdAt).toLocaleString("en-GB"),
+        customer: sale.customerName ?? "",
+        lines: cart,
+        totals: {
+          subtotal: sale.subtotal,
+          discount: sale.discount,
+          vat: sale.vat,
+          total: sale.total,
+        },
+        method,
+        tendered: method === "Cash" ? sale.amountPaid : null,
+        change: sale.change,
+      });
+      loadProducts(); // refresh stock after the sale
+    } catch {
+      setStatus({ ok: false, text: "Network error. The sale was not saved." });
+    } finally {
+      setSaving(false);
+    }
   }
   function startNewSale() {
     setBill(null);
