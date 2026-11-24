@@ -20,8 +20,8 @@ type Props = {
   cashShort: boolean;
   change: number;
 
-  onChangeQty: (sku: string, delta: number) => void;
-  onRemove: (sku: string) => void;
+  onChangeQty: (id: string, delta: number) => void;
+  onRemove: (id: string) => void;
   onComplete: () => void;
 };
 
@@ -60,14 +60,14 @@ export default function CartPanel({
           </li>
         )}
         {cart.map((l) => (
-          <li key={l.sku} className="text-sm text-white">
+          <li key={l.id} className="text-sm text-white">
             <div className="flex justify-between">
               <span>{l.name}</span>
               <span>{fmt(l.price * l.qty)}</span>
             </div>
             <div className="mt-1 flex items-center gap-2 text-[#f4d9cd]">
               <button
-                onClick={() => onChangeQty(l.sku, -1)}
+                onClick={() => onChangeQty(l.id, -1)}
                 aria-label={`Decrease ${l.name}`}
                 className="h-6 w-6 rounded border border-[#aa5e78] hover:bg-[#aa5e78]"
               >
@@ -75,7 +75,7 @@ export default function CartPanel({
               </button>
               <span className="w-6 text-center text-white">{l.qty}</span>
               <button
-                onClick={() => onChangeQty(l.sku, 1)}
+                onClick={() => onChangeQty(l.id, 1)}
                 aria-label={`Increase ${l.name}`}
                 className="h-6 w-6 rounded border border-[#aa5e78] hover:bg-[#aa5e78]"
               >
@@ -83,7 +83,7 @@ export default function CartPanel({
               </button>
               <span className="text-xs">@ Rs {l.price}</span>
               <button
-                onClick={() => onRemove(l.sku)}
+                onClick={() => onRemove(l.id)}
                 className="ml-auto underline hover:text-white"
               >
                 Remove

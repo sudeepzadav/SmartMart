@@ -44,7 +44,7 @@ export default function BillReceipt({ bill, onNewSale }: Props) {
           </thead>
           <tbody>
             {bill.lines.map((l) => (
-              <tr key={l.sku}>
+              <tr key={l.id}>
                 <td className="py-1">{l.name}</td>
                 <td className="py-1 text-right">{l.qty}</td>
                 <td className="py-1 text-right">{l.price}</td>

@@ -1,4 +1,11 @@
-export type Product = { sku: string; barcode: string; name: string; price: number };
+// A product as the POS needs it (loaded from /api/products).
+export type Product = {
+  id: string;
+  barcode: string;
+  name: string;
+  price: number;
+  stock: number;
+};
 export type CartLine = Product & { qty: number };
 
 export type PayMethod = "Cash" | "Card" | "QR";

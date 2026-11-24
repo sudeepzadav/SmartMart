@@ -1,11 +1,10 @@
 "use client";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
-import { useRouter } from "next/navigation";
 import ProductGrid from "@/components/ProductGrid";
 import CartPanel from "@/components/CartPanel";
 import BillReceipt from "@/components/BillReceipt";
-import { calcTotals, formatInvoiceNo, round2 } from "./lib";
+import { calcTotals, round2 } from "./lib";
 import type {
   Bill,
   CartLine,
@@ -14,14 +13,11 @@ import type {
   Product,
   ScanStatus,
 } from "./types";
-import Footer from "@/components/Footer";
 
 export default function PosPage() {
-  const router = useRouter();
-
-  // Products now come from the database (/api/products).
-  // `sku` holds the product's database id, which is what the server needs.
   const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -34,46 +30,12 @@ export default function PosPage() {
   const [tendered, setTendered] = useState("");
 
   const [bill, setBill] = useState<Bill | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [billCounter, setBillCounter] = useState(1);
 
   // The ref lives here so the global scanner listener below can use it.
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const loadProducts = useCallback(async () => {
-    try {
-      const res = await fetch("/api/products", { cache: "no-store" });
-      if (res.status === 401) {
-        router.push("/login");
-        return;
-      }
-      if (!res.ok) throw new Error("Failed");
-      const data: {
-        id: string;
-        name: string;
-        barcode: string | null;
-        price: number;
-      }[] = await res.json();
-      setProducts(
-        data.map((p) => ({
-          sku: p.id,
-          barcode: p.barcode ?? "",
-          name: p.name,
-          price: p.price,
-        }))
-      );
-    } catch {
-      setStatus({
-        ok: false,
-        text: "Could not load products. Check the connection and refresh.",
-      });
-    }
-  }, [router]);
-
-  useEffect(() => {
-    loadProducts();
-  }, [loadProducts]);
-
-  // Fit the POS exactly into the space left under the navbar (and above any footer),
+  // Fit the POS exactly into the space left under the navbar (and above the footer),
   // so the page itself never scrolls. Only the product list and the cart scroll.
   const rootRef = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState("100dvh");
@@ -96,6 +58,37 @@ export default function PosPage() {
     };
   }, []);
 
+  // Load the products saved in the database.
+  // /api/products returns { products: [...], categories: [...] }.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/products");
+        if (!res.ok) throw new Error("load failed");
+        const data = await res.json();
+        const list: Product[] = (data.products ?? []).map(
+          (p: Product & Record<string, unknown>) => ({
+            id: p.id,
+            barcode: p.barcode,
+            name: p.name,
+            price: p.price,
+            stock: p.stock,
+          })
+        );
+        if (!cancelled) setProducts(list);
+      } catch {
+        if (!cancelled)
+          setLoadError("Could not load products. Check the connection and refresh.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Barcode scanners act like a keyboard: they type the code very fast and press Enter.
   // If focus is not in a field (e.g. after clicking a button), send the keystrokes
   // to the search box so the scan is never lost.
@@ -111,11 +104,9 @@ export default function PosPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [bill]);
 
+  const q = query.trim().toLowerCase();
   const shown = products.filter(
-    (p) =>
-      p.name.toLowerCase().includes(query.toLowerCase()) ||
-      p.sku.toLowerCase() === query.toLowerCase() ||
-      p.barcode === query
+    (p) => p.name.toLowerCase().includes(q) || p.barcode === query.trim()
   );
 
   const totals = useMemo(
@@ -134,32 +125,30 @@ export default function PosPage() {
   // ---- Cart actions ----
   function add(p: Product) {
     setCart((c) => {
-      const found = c.find((l) => l.sku === p.sku);
+      const found = c.find((l) => l.id === p.id);
       return found
-        ? c.map((l) => (l.sku === p.sku ? { ...l, qty: l.qty + 1 } : l))
+        ? c.map((l) => (l.id === p.id ? { ...l, qty: l.qty + 1 } : l))
         : [...c, { ...p, qty: 1 }];
     });
     setStatus({ ok: true, text: `Added ${p.name}` });
   }
-  function changeQty(sku: string, delta: number) {
+  function changeQty(id: string, delta: number) {
     setCart((c) =>
       c
-        .map((l) => (l.sku === sku ? { ...l, qty: l.qty + delta } : l))
+        .map((l) => (l.id === id ? { ...l, qty: l.qty + delta } : l))
         .filter((l) => l.qty > 0)
     );
   }
-  function remove(sku: string) {
-    setCart((c) => c.filter((l) => l.sku !== sku));
+  function remove(id: string) {
+    setCart((c) => c.filter((l) => l.id !== id));
   }
 
-  // Scan / Enter: match barcode or SKU exactly, else a single search result.
+  // Scan / Enter: match the barcode exactly, else a single search result.
   function onEnter(e: KeyboardEvent) {
     if (e.key !== "Enter") return;
     const code = query.trim();
     if (!code) return;
-    const exact = products.find(
-      (x) => x.barcode === code || x.sku.toLowerCase() === code.toLowerCase()
-    );
+    const exact = products.find((x) => x.barcode === code);
     const match = exact ?? (shown.length === 1 ? shown[0] : undefined);
     if (match) add(match);
     else setStatus({ ok: false, text: `No product found for "${code}"` });
@@ -167,70 +156,21 @@ export default function PosPage() {
   }
 
   // ---- Billing ----
-  // The sale is saved on the server first. The bill is shown only after the
-  // server confirms it, using the totals the server calculated.
-  async function completeSale() {
-    if (cart.length === 0 || cashShort || saving) return;
-    setSaving(true);
-
-    try {
-      const res = await fetch("/api/sales", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: cart.map((l) => ({ productId: l.sku, quantity: l.qty })),
-          paymentMethod: method.toUpperCase(),
-          discountType,
-          discountValue,
-          customerName: customer.trim(),
-          tendered: method === "Cash" ? tenderedNum : null,
-        }),
-      });
-      const data = await res.json();
-
-      if (res.status === 401) {
-        router.push("/login");
-        return;
-      }
-      if (!res.ok) {
-        setStatus({ ok: false, text: data.error ?? "Could not save the sale" });
-        if (res.status === 409) loadProducts(); // stock may have changed
-        return;
-      }
-
-      const sale = data.sale as {
-        receiptNo: number;
-        createdAt: string;
-        customerName: string | null;
-        subtotal: number;
-        discount: number;
-        vat: number;
-        total: number;
-        amountPaid: number;
-        change: number;
-      };
-
-      setBill({
-        billNo: formatInvoiceNo(sale.receiptNo),
-        date: new Date(sale.createdAt).toLocaleString("en-GB"),
-        customer: sale.customerName ?? "",
-        lines: cart,
-        totals: {
-          subtotal: sale.subtotal,
-          discount: sale.discount,
-          vat: sale.vat,
-          total: sale.total,
-        },
-        method,
-        tendered: method === "Cash" ? sale.amountPaid : null,
-        change: sale.change,
-      });
-      loadProducts(); // refresh stock after the sale
-    } catch {
-      setStatus({ ok: false, text: "Network error. The sale was not saved." });
-    } finally {
-      setSaving(false);
-    }
+  function completeSale() {
+    if (cart.length === 0 || cashShort) return;
+    const newBill: Bill = {
+      billNo: `INV-${String(billCounter).padStart(5, "0")}`,
+      date: new Date().toLocaleString("en-GB"),
+      customer: customer.trim(),
+      lines: cart,
+      totals,
+      method,
+      tendered: method === "Cash" ? tenderedNum : null,
+      change,
+    };
+    // TODO: save the sale via API and reduce the stock of the sold products.
+    setBill(newBill);
+    setBillCounter((n) => n + 1);
   }
   function startNewSale() {
     setBill(null);
@@ -259,6 +199,8 @@ export default function PosPage() {
           onEnter={onEnter}
           inputRef={inputRef}
           status={status}
+          loading={loading}
+          loadError={loadError}
           onAdd={add}
         />
         <CartPanel

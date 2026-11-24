@@ -10,6 +10,8 @@ type Props = {
   onEnter: (e: KeyboardEvent) => void;
   inputRef: RefObject<HTMLInputElement | null>;
   status: ScanStatus;
+  loading: boolean;
+  loadError: string;
   onAdd: (p: Product) => void;
 };
 
@@ -20,6 +22,8 @@ export default function ProductGrid({
   onEnter,
   inputRef,
   status,
+  loading,
+  loadError,
   onAdd,
 }: Props) {
   return (
@@ -55,7 +59,7 @@ export default function ProductGrid({
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
         {products.map((p) => (
           <button
-            key={p.sku}
+            key={p.id}
             onClick={() => onAdd(p)}
             className="rounded-xl border border-[#d49b9a] bg-white p-4 text-left shadow-sm hover:border-[#7d0e41] hover:bg-[#f4d9cd] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7d0e41]"
           >
@@ -63,7 +67,15 @@ export default function ProductGrid({
             <div className="mt-1 text-sm text-[#6b4455]">Rs {p.price}</div>
           </button>
         ))}
-        {products.length === 0 && (
+        {loading && (
+          <p className="col-span-full text-sm text-[#6b4455]">Loading products...</p>
+        )}
+        {loadError && (
+          <p role="alert" className="col-span-full text-sm font-medium text-red-700">
+            {loadError}
+          </p>
+        )}
+        {!loading && !loadError && products.length === 0 && (
           <p className="col-span-full text-sm text-[#6b4455]">
             No products match your search.
           </p>

@@ -2,22 +2,41 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent, KeyboardEvent, ReactNode } from "react";
 
+export type CategoryOption = { id: string; name: string };
+
+// A product as saved in the database and shown in the table.
 export type ProductRecord = {
-  sku: string;
+  id: string;
   barcode: string;
   name: string;
-  category: string;
+  categoryId: string;
+  categoryName: string;
   price: number;
+  costPrice: number;
   stock: number;
+  lowStockAt: number;
+};
+
+// What the form sends when saving.
+export type NewProduct = {
+  barcode: string;
+  name: string;
+  categoryId: string;
+  price: number;
+  costPrice: number;
+  stock: number;
+  lowStockAt: number;
 };
 
 type Props = {
-  existing: ProductRecord[]; // used to block duplicate SKU / barcode
-  onSave: (p: ProductRecord) => void;
+  existing: ProductRecord[]; // used to block a duplicate barcode
+  categories: CategoryOption[];
+  // Return an error message to show in the form, or nothing when the save worked.
+  onSave: (p: NewProduct) => Promise<string | void>;
   onClose: () => void;
 };
 
-type Errors = Partial<Record<keyof ProductRecord, string>>;
+type Errors = Partial<Record<keyof NewProduct, string>>;
 
 const fieldClass =
   "w-full rounded-md border border-[#d49b9a] bg-white px-3 py-2 text-[#7d0e41] placeholder:text-[#aa5e78]/70 focus:border-[#7d0e41] focus:outline-2 focus:outline-offset-1 focus:outline-[#aa5e78]";
@@ -25,11 +44,13 @@ const fieldClass =
 function Field({
   id,
   label,
+  hint,
   error,
   children,
 }: {
   id: string;
   label: string;
+  hint?: string;
   error?: string;
   children: ReactNode;
 }) {
@@ -39,6 +60,7 @@ function Field({
         {label}
       </label>
       {children}
+      {hint && !error && <p className="mt-1 text-xs text-[#6b4455]">{hint}</p>}
       {error && (
         <p id={`${id}-error`} className="mt-1 text-xs text-red-700">
           {error}
@@ -48,24 +70,28 @@ function Field({
   );
 }
 
-export default function AddProductModal({ existing, onSave, onClose }: Props) {
-  const [sku, setSku] = useState("");
+export default function AddProductModal({
+  existing,
+  categories,
+  onSave,
+  onClose,
+}: Props) {
   const [barcode, setBarcode] = useState("");
   const [name, setName] = useState("");
-  const [category, setCategory] = useState("");
+  const [categoryId, setCategoryId] = useState("");
   const [price, setPrice] = useState("");
+  const [costPrice, setCostPrice] = useState("");
   const [stock, setStock] = useState("");
+  const [lowStockAt, setLowStockAt] = useState("5");
   const [errors, setErrors] = useState<Errors>({});
+  const [formError, setFormError] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const skuRef = useRef<HTMLInputElement>(null);
+  const barcodeRef = useRef<HTMLInputElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
 
-  const categories = Array.from(
-    new Set(existing.map((p) => p.category).filter(Boolean))
-  );
-
   useEffect(() => {
-    skuRef.current?.focus();
+    barcodeRef.current?.focus(); // ready for the scanner straight away
     function onKey(e: globalThis.KeyboardEvent) {
       if (e.key === "Escape") onClose();
     }
@@ -84,35 +110,42 @@ export default function AddProductModal({ existing, onSave, onClose }: Props) {
 
   function validate(): Errors {
     const err: Errors = {};
-    const s = sku.trim();
     const b = barcode.trim();
-    if (!s) err.sku = "SKU is required.";
-    else if (existing.some((p) => p.sku.toLowerCase() === s.toLowerCase()))
-      err.sku = "This SKU already exists.";
     if (b && existing.some((p) => p.barcode === b))
       err.barcode = "This barcode already belongs to another product.";
     if (!name.trim()) err.name = "Name is required.";
-    const pr = parseFloat(price);
-    if (!(pr > 0)) err.price = "Enter a price greater than 0.";
+    if (!(parseFloat(price) > 0)) err.price = "Enter a price greater than 0.";
+    if (costPrice !== "" && !(parseFloat(costPrice) >= 0))
+      err.costPrice = "Cost price cannot be negative.";
     const st = Number(stock);
     if (stock === "" || !Number.isInteger(st) || st < 0)
       err.stock = "Enter a whole number, 0 or more.";
+    const low = Number(lowStockAt);
+    if (lowStockAt === "" || !Number.isInteger(low) || low < 0)
+      err.lowStockAt = "Enter a whole number, 0 or more.";
     return err;
   }
 
-  function submit(e: FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
+    if (saving) return;
     const err = validate();
     setErrors(err);
+    setFormError("");
     if (Object.keys(err).length > 0) return;
-    onSave({
-      sku: sku.trim(),
+
+    setSaving(true);
+    const message = await onSave({
       barcode: barcode.trim(),
       name: name.trim(),
-      category: category.trim() || "Uncategorized",
+      categoryId,
       price: parseFloat(price),
+      costPrice: costPrice === "" ? 0 : parseFloat(costPrice),
       stock: Number(stock),
+      lowStockAt: Number(lowStockAt),
     });
+    setSaving(false);
+    if (message) setFormError(message);
   }
 
   return (
@@ -134,33 +167,25 @@ export default function AddProductModal({ existing, onSave, onClose }: Props) {
           Add product
         </h2>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field id="sku" label="SKU" error={errors.sku}>
-            <input
-              id="sku"
-              ref={skuRef}
-              value={sku}
-              onChange={(e) => setSku(e.target.value)}
-              placeholder="P005"
-              aria-invalid={!!errors.sku}
-              aria-describedby={errors.sku ? "sku-error" : undefined}
-              className={fieldClass}
-            />
-          </Field>
-          <Field id="barcode" label="Barcode (scan or type)" error={errors.barcode}>
-            <input
-              id="barcode"
-              value={barcode}
-              onChange={(e) => setBarcode(e.target.value)}
-              onKeyDown={onBarcodeKey}
-              placeholder="Scan the package"
-              inputMode="numeric"
-              aria-invalid={!!errors.barcode}
-              aria-describedby={errors.barcode ? "barcode-error" : undefined}
-              className={fieldClass}
-            />
-          </Field>
-        </div>
+        <Field
+          id="barcode"
+          label="Barcode (scan or type)"
+          hint="Leave empty if the item has no barcode. A code is made for it."
+          error={errors.barcode}
+        >
+          <input
+            id="barcode"
+            ref={barcodeRef}
+            value={barcode}
+            onChange={(e) => setBarcode(e.target.value)}
+            onKeyDown={onBarcodeKey}
+            placeholder="Scan the package"
+            inputMode="numeric"
+            aria-invalid={!!errors.barcode}
+            aria-describedby={errors.barcode ? "barcode-error" : undefined}
+            className={fieldClass}
+          />
+        </Field>
 
         <Field id="name" label="Name" error={errors.name}>
           <input
@@ -175,24 +200,32 @@ export default function AddProductModal({ existing, onSave, onClose }: Props) {
           />
         </Field>
 
-        <Field id="category" label="Category" error={errors.category}>
-          <input
+        <Field
+          id="category"
+          label="Category"
+          hint={
+            categories.length === 0
+              ? "No categories yet. Add some on the Categories page."
+              : undefined
+          }
+        >
+          <select
             id="category"
-            list="category-list"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            placeholder="Grocery"
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
             className={fieldClass}
-          />
-          <datalist id="category-list">
+          >
+            <option value="">No category</option>
             {categories.map((c) => (
-              <option key={c} value={c} />
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
             ))}
-          </datalist>
+          </select>
         </Field>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field id="price" label="Price (Rs)" error={errors.price}>
+          <Field id="price" label="Selling price (Rs)" error={errors.price}>
             <input
               id="price"
               type="number"
@@ -205,6 +238,27 @@ export default function AddProductModal({ existing, onSave, onClose }: Props) {
               className={fieldClass}
             />
           </Field>
+          <Field
+            id="costPrice"
+            label="Cost price (Rs)"
+            hint="What you pay the supplier."
+            error={errors.costPrice}
+          >
+            <input
+              id="costPrice"
+              type="number"
+              min="0"
+              step="0.01"
+              value={costPrice}
+              onChange={(e) => setCostPrice(e.target.value)}
+              aria-invalid={!!errors.costPrice}
+              aria-describedby={errors.costPrice ? "costPrice-error" : undefined}
+              className={fieldClass}
+            />
+          </Field>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
           <Field id="stock" label="Stock" error={errors.stock}>
             <input
               id="stock"
@@ -218,7 +272,31 @@ export default function AddProductModal({ existing, onSave, onClose }: Props) {
               className={fieldClass}
             />
           </Field>
+          <Field
+            id="lowStockAt"
+            label="Low-stock alert at"
+            hint="Flag when stock is this or less."
+            error={errors.lowStockAt}
+          >
+            <input
+              id="lowStockAt"
+              type="number"
+              min="0"
+              step="1"
+              value={lowStockAt}
+              onChange={(e) => setLowStockAt(e.target.value)}
+              aria-invalid={!!errors.lowStockAt}
+              aria-describedby={errors.lowStockAt ? "lowStockAt-error" : undefined}
+              className={fieldClass}
+            />
+          </Field>
         </div>
+
+        {formError && (
+          <p role="alert" className="text-sm font-medium text-red-700">
+            {formError}
+          </p>
+        )}
 
         <div className="flex justify-end gap-3 pt-2">
           <button
@@ -230,9 +308,10 @@ export default function AddProductModal({ existing, onSave, onClose }: Props) {
           </button>
           <button
             type="submit"
-            className="rounded-md bg-[#7d0e41] px-4 py-2 font-semibold text-white hover:bg-[#aa5e78] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7d0e41]"
+            disabled={saving}
+            className="rounded-md bg-[#7d0e41] px-4 py-2 font-semibold text-white hover:bg-[#aa5e78] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7d0e41] disabled:opacity-60"
           >
-            Save product
+            {saving ? "Saving..." : "Save product"}
           </button>
         </div>
       </form>
