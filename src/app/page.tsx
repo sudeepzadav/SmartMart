@@ -223,8 +223,7 @@ export default function HomePage() {
                 : "Sign in and add your products. You can be billing customers in minutes."}
             </p>
 
-            {/* Reserve the button's height until the session check finishes,
-                so a signed-in user never sees a flash of "Sign in" */}
+           
             {!sessionLoaded ? (
               <div className="mt-6 h-12" aria-hidden="true" />
             ) : isAdmin ? (

@@ -69,8 +69,8 @@ model Product {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  costPrice  Float @default(0) // what you pay the supplier
-  lowStockAt Int   @default(5) // flag the product when stock is at or below this
+  costPrice  Float @default(0) 
+  lowStockAt Int   @default(5) 
 }
 
 /* ---------- Sales ---------- */
@@ -80,26 +80,26 @@ type SaleItem {
   productId String @db.ObjectId
   name      String
   price     Float
-  costPrice Float? // copied at sale time so old profit numbers never change
+  costPrice Float?
   quantity  Int
 }
 
 model Sale {
   id            String        @id @default(auto()) @map("_id") @db.ObjectId
-  receiptNo     Int           @unique // shown as INV-00001
+  receiptNo     Int           @unique 
   cashierId     String        @db.ObjectId
   cashier       User          @relation(fields: [cashierId], references: [id])
   cashierName   String
-  customerName  String? // CHANGED: free-text name typed at the counter
-  customerId    String?       @db.ObjectId // only for credit sales
+  customerName  String? 
+  customerId    String?       @db.ObjectId 
   customer      Customer?     @relation(fields: [customerId], references: [id])
   items         SaleItem[]
-  subtotal      Float         @default(0) // CHANGED: before discount and VAT
-  discount      Float         @default(0) // CHANGED
-  vat           Float         @default(0) // CHANGED
-  total         Float // what the customer pays: subtotal - discount + VAT
+  subtotal      Float         @default(0) 
+  discount      Float         @default(0) 
+  vat           Float         @default(0)
+  total         Float 
   paymentMethod PaymentMethod
-  amountPaid    Float // cash handed over, or the total for card and QR
+  amountPaid    Float 
   change        Float
   createdAt     DateTime      @default(now())
 
@@ -112,7 +112,7 @@ model Customer {
   id        String        @id @default(auto()) @map("_id") @db.ObjectId
   name      String
   phone     String?
-  balance   Float         @default(0) // how much this customer owes you right now
+  balance   Float         @default(0) 
   active    Boolean       @default(true)
   sales     Sale[]
   entries   CreditEntry[]
@@ -161,7 +161,7 @@ model Purchase {
   createdBy   User           @relation(fields: [createdById], references: [id])
   items       PurchaseItem[]
   total       Float
-  amountPaid  Float          @default(0) // total - amountPaid = what you still owe
+  amountPaid  Float          @default(0) 
   status      PurchaseStatus @default(ORDERED)
   receivedAt  DateTime?
   createdAt   DateTime       @default(now())
@@ -172,7 +172,7 @@ model Purchase {
 model Expense {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   title       String
-  category    String? // rent, electricity, salary, and so on
+  category    String? 
   amount      Float
   note        String?
   date        DateTime @default(now())
