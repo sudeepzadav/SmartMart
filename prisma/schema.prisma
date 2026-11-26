@@ -146,25 +146,29 @@ model Supplier {
   updatedAt DateTime   @updatedAt
 }
 
-type PurchaseItem {
-  productId String @db.ObjectId
-  name      String
-  costPrice Float
-  quantity  Int
+model Purchase {
+  id           String         @id @default(auto()) @map("_id") @db.ObjectId
+  orderNo      String         @unique            
+  supplierName String
+  status       String         @default("Pending") 
+  orderDate    DateTime
+  receivedAt   DateTime?
+  total        Float
+  note         String?
+  items        PurchaseItem[]
+  createdAt    DateTime       @default(now())
 }
 
-model Purchase {
-  id          String         @id @default(auto()) @map("_id") @db.ObjectId
-  supplierId  String         @db.ObjectId
-  supplier    Supplier       @relation(fields: [supplierId], references: [id])
-  createdById String         @db.ObjectId
-  createdBy   User           @relation(fields: [createdById], references: [id])
-  items       PurchaseItem[]
-  total       Float
-  amountPaid  Float          @default(0) 
-  status      PurchaseStatus @default(ORDERED)
-  receivedAt  DateTime?
-  createdAt   DateTime       @default(now())
+model PurchaseItem {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  purchaseId String   @db.ObjectId
+  purchase   Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  productId  String   @db.ObjectId
+  product    Product  @relation(fields: [productId], references: [id])
+  name       String  
+  qty        Int
+  unitCost   Float
+  lineTotal  Float
 }
 
 /* ---------- Expenses ---------- */
