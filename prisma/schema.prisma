@@ -14,14 +14,14 @@ enum Role {
 
 enum PaymentMethod {
   CASH
-  CARD 
+  CARD
   QR
   CREDIT
 }
 
 enum CreditType {
-  CHARGE  
-  PAYMENT 
+  CHARGE
+  PAYMENT
 }
 
 enum PurchaseStatus {
@@ -43,9 +43,10 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  sales     Sale[]
-  purchases Purchase[]
-  expenses  Expense[]
+  sales    Sale[]
+  expenses Expense[]
+  // FIXED: removed "purchases Purchase[]". Purchase has no user relation any more,
+  // so this field had no opposite side and Prisma rejected the schema.
 }
 
 model Category {
@@ -69,8 +70,11 @@ model Product {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  costPrice  Float @default(0) 
-  lowStockAt Int   @default(5) 
+  costPrice  Float @default(0)
+  lowStockAt Int   @default(5)
+
+  // FIXED: PurchaseItem.product points here, so Product needs the opposite side
+  purchaseItems PurchaseItem[]
 }
 
 /* ---------- Sales ---------- */
@@ -86,20 +90,20 @@ type SaleItem {
 
 model Sale {
   id            String        @id @default(auto()) @map("_id") @db.ObjectId
-  receiptNo     Int           @unique 
+  receiptNo     Int           @unique
   cashierId     String        @db.ObjectId
   cashier       User          @relation(fields: [cashierId], references: [id])
   cashierName   String
-  customerName  String? 
-  customerId    String?       @db.ObjectId 
+  customerName  String?
+  customerId    String?       @db.ObjectId
   customer      Customer?     @relation(fields: [customerId], references: [id])
   items         SaleItem[]
-  subtotal      Float         @default(0) 
-  discount      Float         @default(0) 
+  subtotal      Float         @default(0)
+  discount      Float         @default(0)
   vat           Float         @default(0)
-  total         Float 
+  total         Float
   paymentMethod PaymentMethod
-  amountPaid    Float 
+  amountPaid    Float
   change        Float
   createdAt     DateTime      @default(now())
 
@@ -112,7 +116,7 @@ model Customer {
   id        String        @id @default(auto()) @map("_id") @db.ObjectId
   name      String
   phone     String?
-  balance   Float         @default(0) 
+  balance   Float         @default(0)
   active    Boolean       @default(true)
   sales     Sale[]
   entries   CreditEntry[]
@@ -137,38 +141,48 @@ model CreditEntry {
 /* ---------- Suppliers and purchases ---------- */
 
 model Supplier {
-  id        String     @id @default(auto()) @map("_id") @db.ObjectId
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   name      String
   phone     String?
-  active    Boolean    @default(true)
-  purchases Purchase[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  // FIXED: removed "purchases Purchase[]". Purchase stores supplierName as text,
+  // so there is no relation to this model.
 }
 
 model Purchase {
   id           String         @id @default(auto()) @map("_id") @db.ObjectId
-  orderNo      String         @unique            
+  orderNo      String         @unique
   supplierName String
-  status       String         @default("Pending") 
+  status       String         @default("Pending") // Pending | Received | Cancelled
   orderDate    DateTime
   receivedAt   DateTime?
   total        Float
   note         String?
   items        PurchaseItem[]
   createdAt    DateTime       @default(now())
+
+  @@index([createdAt])
+  @@index([status])
 }
 
 model PurchaseItem {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
   purchaseId String   @db.ObjectId
-  purchase   Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  productId  String   @db.ObjectId
-  product    Product  @relation(fields: [productId], references: [id])
-  name       String  
-  qty        Int
-  unitCost   Float
-  lineTotal  Float
+  purchase   Purchase @relation(fields: [purchaseId], references: [id])
+
+  productId String  @db.ObjectId
+  product   Product @relation(fields: [productId], references: [id])
+
+  name      String
+  qty       Int
+  unitCost  Float
+  lineTotal Float
+
+  @@index([purchaseId])
+  @@index([productId])
 }
 
 /* ---------- Expenses ---------- */
@@ -176,7 +190,7 @@ model PurchaseItem {
 model Expense {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   title       String
-  category    String? 
+  category    String?
   amount      Float
   note        String?
   date        DateTime @default(now())

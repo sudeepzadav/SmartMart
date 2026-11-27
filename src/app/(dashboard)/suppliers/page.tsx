@@ -1,14 +1,37 @@
+
 import PageHeader from "@/components/PageHeader";
 import DataTable from "@/components/DataTable";
+import { db } from "@/lib/db";
 
-const columns = ["Name","Phone","Owed (Rs)"];
-// Sample data. Replace with a database query.
-const rows: (string | number)[][] = [["Himal Traders","98XXXXXXXX",0],["Fresh Dairy Co.","98XXXXXXXX",12000]];
+export const dynamic = "force-dynamic";
 
-export default function Page() {
+export default async function Page() {
+  const suppliers = await db.supplier.findMany({
+    where: { active: true },
+    orderBy: { name: "asc" },
+    select: {
+      id: true,
+      name: true,
+      phone: true,
+    },
+  });
+
+  const columns = ["Name", "Phone", "Owed (Rs)"];
+
+  const rows: (string | number)[][] = suppliers.map((supplier) => [
+    supplier.name,
+    supplier.phone || "—",
+    "—",
+  ]);
+
   return (
     <>
-      <PageHeader title="Suppliers" subtitle="People and companies you buy from." action="Add supplier" />
+      <PageHeader
+        title="Suppliers"
+        subtitle="People and companies you buy from."
+        action="Add supplier"
+      />
+
       <DataTable columns={columns} rows={rows} />
     </>
   );
