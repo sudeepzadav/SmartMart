@@ -1,6 +1,6 @@
 "use client";
 import type { CartLine, DiscountType, PayMethod, Totals } from "@/app/pos/types";
-import { fmt, VAT_RATE } from "@/app/pos/lib";
+import { fmt } from "@/app/pos/lib";
 
 type Props = {
   cart: CartLine[];
@@ -23,6 +23,9 @@ type Props = {
   onChangeQty: (id: string, delta: number) => void;
   onRemove: (id: string) => void;
   onComplete: () => void;
+  saving?: boolean;
+  saleError?: string;
+  vatPercent: number; // from the Settings page, for example 13
 };
 
 const fieldClass =
@@ -46,11 +49,14 @@ export default function CartPanel({
   onChangeQty,
   onRemove,
   onComplete,
+  saving = false,
+  saleError = "",
+  vatPercent,
 }: Props) {
   const showChange = method === "Cash" && tendered !== "" && !cashShort;
 
   return (
-    <aside className="flex w-104 flex-col overflow-y-auto bg-[#7d0e41] p-6">
+    <aside className="flex w-[26rem] flex-col overflow-y-auto bg-[#7d0e41] p-6">
       <h2 className="mb-3 text-lg font-bold text-[#f4d9cd]">Current sale</h2>
 
       <ul className="min-h-24 flex-1 space-y-3 overflow-y-auto">
@@ -173,9 +179,9 @@ export default function CartPanel({
             <dd>- {fmt(totals.discount)}</dd>
           </div>
         )}
-        {VAT_RATE > 0 && (
+        {vatPercent > 0 && (
           <div className="flex justify-between">
-            <dt>VAT ({Math.round(VAT_RATE * 100)}%)</dt>
+            <dt>VAT ({+vatPercent.toFixed(2)}%)</dt>
             <dd>{fmt(totals.vat)}</dd>
           </div>
         )}
@@ -191,12 +197,18 @@ export default function CartPanel({
         </div>
       )}
 
+      {saleError && (
+        <p role="alert" className="mt-3 rounded-md bg-[#f4d9cd] p-2 text-sm font-medium text-red-800">
+          {saleError}
+        </p>
+      )}
+
       <button
-        disabled={cart.length === 0 || cashShort}
+        disabled={cart.length === 0 || cashShort || saving}
         onClick={onComplete}
         className="mt-4 rounded-md bg-[#f4d9cd] py-3 font-semibold text-[#7d0e41] hover:bg-[#d49b9a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f4d9cd] disabled:opacity-40 disabled:hover:bg-[#f4d9cd]"
       >
-        Complete sale and print bill
+        {saving ? "Saving sale..." : "Complete sale and print bill"}
       </button>
     </aside>
   );

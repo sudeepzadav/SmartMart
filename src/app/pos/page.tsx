@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -9,6 +8,8 @@ import CartPanel from "@/components/CartPanel";
 import BillReceipt from "@/components/BillReceipt";
 
 import { calcTotals, round2 } from "./lib";
+import { DEFAULT_SETTINGS } from "@/lib/settings-types";
+import type { StoreSettings } from "@/lib/settings-types";
 
 import type {
   Bill,
@@ -20,6 +21,9 @@ import type {
 } from "./types";
 
 export default function PosPage() {
+  // Store name, address, VAT rate... saved on the Settings page.
+  const [settings, setSettings] = useState<StoreSettings>(DEFAULT_SETTINGS);
+
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -39,7 +43,6 @@ export default function PosPage() {
   const [bill, setBill] = useState<Bill | null>(null);
   const [billCounter, setBillCounter] = useState(1);
 
-  
   const [saving, setSaving] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -73,6 +76,35 @@ export default function PosPage() {
     return () => {
       window.removeEventListener("resize", fit);
       window.removeEventListener("load", fit);
+    };
+  }, []);
+
+  // Load the store settings (name, address, VAT rate).
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadSettings() {
+      try {
+        const res = await fetch("/api/settings", {
+          cache: "no-store",
+        });
+
+        if (!res.ok) return;
+
+        const data: StoreSettings = await res.json();
+
+        if (!cancelled) {
+          setSettings(data);
+        }
+      } catch {
+        // Keep the defaults if the settings cannot be loaded.
+      }
+    }
+
+    loadSettings();
+
+    return () => {
+      cancelled = true;
     };
   }, []);
 
@@ -191,10 +223,16 @@ export default function PosPage() {
       p.barcode === query.trim()
   );
 
-  // Calculate cart totals.
+  // Calculate cart totals with the VAT rate from Settings.
   const totals = useMemo(
-    () => calcTotals(cart, discountType, discountValue),
-    [cart, discountType, discountValue]
+    () =>
+      calcTotals(
+        cart,
+        discountType,
+        discountValue,
+        settings.vatRate / 100
+      ),
+    [cart, discountType, discountValue, settings.vatRate]
   );
 
   // Cash calculation.
@@ -273,12 +311,10 @@ export default function PosPage() {
     );
   }
 
-  
   function remove(id: string) {
     setCart((c) => c.filter((l) => l.id !== id));
   }
 
-  
   function onEnter(e: KeyboardEvent) {
     if (e.key !== "Enter") return;
 
@@ -305,7 +341,6 @@ export default function PosPage() {
     setQuery("");
   }
 
- 
   async function completeSale() {
     if (cart.length === 0 || cashShort || saving) {
       return;
@@ -344,7 +379,6 @@ export default function PosPage() {
 
       const data = await response.json();
 
-      
       if (!response.ok) {
         throw new Error(
           data.error || "Could not complete sale"
@@ -359,7 +393,6 @@ export default function PosPage() {
         );
       }
 
-      
       const newBill: Bill = {
         billNo: `INV-${String(
           savedSale.receiptNo
@@ -373,8 +406,14 @@ export default function PosPage() {
 
         lines: cart,
 
-        
-        totals,
+        // Use the amounts the server saved, so the bill always matches
+        // the database. Fall back to the on-screen totals if missing.
+        totals: {
+          subtotal: savedSale.subtotal ?? totals.subtotal,
+          discount: savedSale.discount ?? totals.discount,
+          vat: savedSale.vat ?? totals.vat,
+          total: savedSale.total ?? totals.total,
+        },
 
         method,
 
@@ -384,11 +423,9 @@ export default function PosPage() {
         change: savedSale.change,
       };
 
-      
       setBill(newBill);
       setBillCounter((n) => n + 1);
 
-      
       await refreshProducts();
     } catch (error) {
       console.error("Sale error:", error);
@@ -407,7 +444,6 @@ export default function PosPage() {
     }
   }
 
-  
   function startNewSale() {
     setBill(null);
     setCart([]);
@@ -461,12 +497,15 @@ export default function PosPage() {
           onChangeQty={changeQty}
           onRemove={remove}
           onComplete={completeSale}
+          saving={saving}
+          vatPercent={settings.vatRate}
         />
       </div>
 
       {bill && (
         <BillReceipt
           bill={bill}
+          store={settings}
           onNewSale={startNewSale}
         />
       )}

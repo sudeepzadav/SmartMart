@@ -198,3 +198,16 @@ model Expense {
   createdBy   User     @relation(fields: [createdById], references: [id])
   createdAt   DateTime @default(now())
 }
+
+
+/* ---------- Settings ---------- */
+model StoreSetting {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  key       String   @unique
+  name      String   @default("Smart Mart")
+  address   String?
+  phone     String?
+  panVat    String?
+  vatRate   Float    @default(13)
+  updatedAt DateTime @updatedAt
+}

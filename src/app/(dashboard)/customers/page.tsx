@@ -1,15 +1,15 @@
-import PageHeader from "@/components/PageHeader";
-import DataTable from "@/components/DataTable";
+import CustomersView from "@/components/CustomersView";
+import { db } from "@/lib/db";
 
-const columns = ["Name","Phone","Credit balance (Rs)"];
+// Always read fresh data, never a cached copy.
+export const dynamic = "force-dynamic";
 
-const rows: (string | number)[][] = [["Ram Shrestha","98XXXXXXXX",1500],["Sita Rai","98XXXXXXXX",0]];
+export default async function Page() {
+  const customers = await db.customer.findMany({
+    where: { active: true },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, phone: true, balance: true },
+  });
 
-export default function Page() {
-  return (
-    <>
-      <PageHeader title="Customers" subtitle="Regulars and credit (udhar) balances." action="Add customer" />
-      <DataTable columns={columns} rows={rows} />
-    </>
-  );
+  return <CustomersView customers={customers} />;
 }

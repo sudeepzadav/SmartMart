@@ -1,15 +1,17 @@
 "use client";
 import type { Bill } from "@/app/pos/types";
-import { fmt, STORE, VAT_RATE } from "@/app/pos/lib";
+import { fmt } from "@/app/pos/lib";
+import type { StoreSettings } from "@/lib/settings-types";
 
 type Props = {
   bill: Bill;
+  store: StoreSettings;
   onNewSale: () => void;
 };
 
 // On screen this is a dialog. When printing, the rest of the page is hidden
 // (the POS screen has `print:hidden`) and only this bill is printed.
-export default function BillReceipt({ bill, onNewSale }: Props) {
+export default function BillReceipt({ bill, store, onNewSale }: Props) {
   return (
     <div
       role="dialog"
@@ -19,10 +21,10 @@ export default function BillReceipt({ bill, onNewSale }: Props) {
     >
       <div className="max-h-full w-full max-w-sm overflow-y-auto rounded-xl bg-white p-6 text-black print:max-h-none print:max-w-none print:overflow-visible print:rounded-none print:p-0">
         <div className="text-center">
-          <h2 className="text-lg font-bold">{STORE.name}</h2>
-          <p className="text-xs">{STORE.address}</p>
-          <p className="text-xs">Tel: {STORE.phone}</p>
-          <p className="text-xs">{STORE.vatNo}</p>
+          <h2 className="text-lg font-bold">{store.name}</h2>
+          {store.address && <p className="text-xs">{store.address}</p>}
+          {store.phone && <p className="text-xs">Tel: {store.phone}</p>}
+          {store.panVat && <p className="text-xs">PAN/VAT: {store.panVat}</p>}
         </div>
 
         <div className="my-3 border-y border-dashed border-black py-2 text-xs">
@@ -65,9 +67,9 @@ export default function BillReceipt({ bill, onNewSale }: Props) {
               <dd>- {fmt(bill.totals.discount)}</dd>
             </div>
           )}
-          {VAT_RATE > 0 && (
+          {store.vatRate > 0 && (
             <div className="flex justify-between">
-              <dt>VAT ({Math.round(VAT_RATE * 100)}%)</dt>
+              <dt>VAT ({+store.vatRate.toFixed(2)}%)</dt>
               <dd>{fmt(bill.totals.vat)}</dd>
             </div>
           )}

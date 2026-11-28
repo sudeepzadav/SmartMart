@@ -1,6 +1,7 @@
 import type { CartLine, DiscountType, Totals } from "./types";
 
-// ---- Store settings (edit these) ----
+// Fallback store details, only used if nothing else is available.
+// The real details now come from the Settings page (see src/lib/settings.ts).
 export const STORE = {
   name: "My Mart",
   address: "Kathmandu, Nepal",
@@ -8,7 +9,8 @@ export const STORE = {
   vatNo: "PAN/VAT: 000000000",
 };
 
-// Set to 0 if prices already include VAT or you don't charge it.
+// Fallback VAT rate (a fraction: 0.13 is 13%). The real rate now comes from
+// the Settings page and is passed to calcTotals below.
 export const VAT_RATE = 0.13;
 
 export const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -20,7 +22,8 @@ export const fmt = (n: number) =>
 export function calcTotals(
   cart: CartLine[],
   discountType: DiscountType,
-  discountValue: string
+  discountValue: string,
+  vatRate: number = VAT_RATE // a fraction, for example 0.13 for 13%
 ): Totals {
   const subtotal = cart.reduce((s, l) => s + l.price * l.qty, 0);
   const dv = Math.max(0, parseFloat(discountValue) || 0);
@@ -30,8 +33,9 @@ export function calcTotals(
       : Math.min(dv, subtotal)
   );
   const taxable = subtotal - discount;
-  const vat = round2(taxable * VAT_RATE);
+  const vat = round2(taxable * vatRate);
   return { subtotal, discount, vat, total: round2(taxable + vat) };
 }
+
 export const formatInvoiceNo = (n: number) =>
   `INV-${String(n).padStart(5, "0")}`;

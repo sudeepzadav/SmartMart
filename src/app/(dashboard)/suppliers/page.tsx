@@ -1,6 +1,4 @@
-
-import PageHeader from "@/components/PageHeader";
-import DataTable from "@/components/DataTable";
+import SuppliersView from "@/components/SuppliersView";
 import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -16,23 +14,5 @@ export default async function Page() {
     },
   });
 
-  const columns = ["Name", "Phone", "Owed (Rs)"];
-
-  const rows: (string | number)[][] = suppliers.map((supplier) => [
-    supplier.name,
-    supplier.phone || "—",
-    "—",
-  ]);
-
-  return (
-    <>
-      <PageHeader
-        title="Suppliers"
-        subtitle="People and companies you buy from."
-        action="Add supplier"
-      />
-
-      <DataTable columns={columns} rows={rows} />
-    </>
-  );
+  return <SuppliersView suppliers={suppliers} />;
 }

@@ -1,22 +1,20 @@
 import PageHeader from "@/components/PageHeader";
 import Link from "next/link";
-
-const reports = [
-  ["Daily sales", "Totals by day and payment type."],
-  ["Profit and loss", "Sales minus purchases and expenses."],
-  ["Stock valuation", "What your current stock is worth."],
-  ["Top products", "Best sellers by units and revenue."],
-];
+import { REPORTS } from "@/lib/reports";
 
 export default function Page() {
   return (
     <>
       <PageHeader title="Reports" subtitle="Pick a report to view or export." />
       <div className="grid gap-4 md:grid-cols-2">
-        {reports.map(([title, desc]) => (
-          <Link key={title} href="/reports" className="rounded-lg border border-stone-200 bg-white p-5 hover:border-emerald-800">
-            <div className="font-medium text-black">{title}</div>
-            <p className="mt-1 text-sm text-stone-600">{desc}</p>
+        {REPORTS.map((r) => (
+          <Link
+            key={r.slug}
+            href={`/reports/${r.slug}`}
+            className="rounded-lg border border-stone-200 bg-white p-5 hover:border-emerald-800"
+          >
+            <div className="font-medium text-black">{r.title}</div>
+            <p className="mt-1 text-sm text-stone-600">{r.desc}</p>
           </Link>
         ))}
       </div>
